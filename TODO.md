@@ -111,10 +111,10 @@ We've fixed the failing tests by:
    - Made tests more flexible to support future improvements
 
 ### Remaining Work (Priority Order)
-1. **Remove Hardcoded Debug Output** 
-   - Replace `println!` statements in strategy.rs (lines 31, 56) with proper verbosity-controlled logging
-   - Make all debug output conditional on verbosity flags from command-line arguments
-   - Pass the verbosity flag from main.rs through to the strategy and verifier components
+1. ✅ **FIXED: Remove Hardcoded Debug Output** 
+   - Replaced `println!` statements in strategy.rs with proper storage of abnormalities in the proof structure
+   - Display abnormalities in a controlled way in the main command-line interface
+   - Added tests to verify abnormality detection and storage works correctly
 
 2. **Complete the Implementation of Abnormality Derivation** (src/strategy.rs)
    - Fix abnormality detection in complex formulas

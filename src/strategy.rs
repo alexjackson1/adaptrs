@@ -27,8 +27,11 @@ fn apply_reliability_strategy(proof: &mut Proof) {
     // Find all abnormalities that are derived in the proof
     let derived_abnormalities = collect_derived_abnormalities(proof);
 
-    // Debug: print all detected abnormalities
-    println!("Detected abnormalities: {:?}", derived_abnormalities);
+    // Debug information should be in the proof result, not printed directly
+    if !derived_abnormalities.is_empty() {
+        // Store the abnormalities in the proof for later use in reporting
+        proof.derived_abnormalities = derived_abnormalities.clone();
+    }
 
     // Mark all lines that depend on unreliable abnormalities
     for line in &mut proof.lines {
@@ -52,8 +55,10 @@ fn apply_minimal_abnormality_strategy(proof: &mut Proof) {
     // Collect all abnormalities that occur in the proof
     let derived_abnormalities = collect_derived_abnormalities(proof);
 
-    // Debug: print all detected abnormalities
-    println!("Detected abnormalities: {:?}", derived_abnormalities);
+    // Store the abnormalities in the proof for later use in reporting
+    if !derived_abnormalities.is_empty() {
+        proof.derived_abnormalities = derived_abnormalities.clone();
+    }
 
     // Find all minimal sets of abnormalities
     let minimal_sets = find_minimal_abnormality_sets(proof, &derived_abnormalities);
@@ -322,6 +327,9 @@ mod tests {
         // The line should be marked if the DS violation is derived
         // For this test, we don't have ¬Q in the proof, so the DS violation isn't derived
         assert!(!proof.lines[2].marked);
+        
+        // Check that abnormalities are being stored properly
+        assert!(proof.derived_abnormalities.is_empty());
 
         // Now add ¬Q to prove the DS violation
         let not_q = Formula::neg(q.clone());
@@ -332,6 +340,11 @@ mod tests {
 
         // Now line 3 should be marked because the DS violation can be derived
         assert!(proof.lines[2].marked);
+        
+        // Check that the DS violation is properly stored in the proof
+        assert!(!proof.derived_abnormalities.is_empty());
+        let expected_abnormality = Abnormality::disj_syll_violation(p.clone(), q.clone());
+        assert!(proof.derived_abnormalities.contains(&expected_abnormality));
     }
 
     #[test]

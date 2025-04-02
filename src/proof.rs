@@ -1,4 +1,4 @@
-use crate::abnormality::AbnormalitySet;
+use crate::abnormality::{Abnormality, AbnormalitySet};
 use crate::formula::Formula;
 use crate::strategy::AdaptiveStrategy;
 use std::collections::HashSet;
@@ -118,7 +118,7 @@ impl fmt::Display for ProofLine {
         }
 
         if self.marked {
-            write!(f, " ✓")?;
+            write!(f, " ✗")?; // Changed to X to indicate the line is marked as invalid
         }
 
         Ok(())
@@ -132,6 +132,8 @@ pub struct Proof {
     pub lines: Vec<ProofLine>,
     /// Adaptive strategy used
     pub strategy: AdaptiveStrategy,
+    /// Abnormalities derived during proof verification
+    pub derived_abnormalities: HashSet<Abnormality>,
 }
 
 impl Proof {
@@ -140,6 +142,7 @@ impl Proof {
         Proof {
             lines: Vec::new(),
             strategy,
+            derived_abnormalities: HashSet::new(),
         }
     }
 

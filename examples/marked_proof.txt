@@ -1,0 +1,7 @@
+# This proof demonstrates lines that get marked as invalid
+# due to derived abnormalities
+
+1. P ∨ Q          PREM
+2. ¬P             PREM
+3. ¬Q             PREM
+4. Q              1,2 DisjSyll {(P ∨ Q) ∧ ¬P ∧ ¬Q}

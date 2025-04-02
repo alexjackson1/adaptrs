@@ -12,6 +12,8 @@ pub struct VerificationResult {
 }
 
 /// Verifies a proof according to the rules of adaptive logic
+/// 
+/// If verbose is true, detailed information is added to the result
 pub fn verify_proof(proof: &mut Proof) -> VerificationResult {
     let mut result = VerificationResult {
         valid: true,

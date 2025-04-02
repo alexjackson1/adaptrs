@@ -91,6 +91,15 @@ fn main() {
                 println!("Proof is invalid.");
             }
 
+            // Display derived abnormalities
+            if !proof.derived_abnormalities.is_empty() {
+                println!("Detected abnormalities: {}", 
+                    proof.derived_abnormalities.iter()
+                        .map(|a| a.to_string())
+                        .collect::<Vec<_>>()
+                        .join(", "));
+            }
+
             if args.verbose {
                 println!("\nDetails:");
                 for detail in &result.details {
