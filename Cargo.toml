@@ -3,7 +3,7 @@ name = "adaptrs"
 version = "0.1.0"
 edition = "2021"
 description = "An adaptive logic proof verifier"
-authors = ["Claude"]
+authors = ["Alex Jackson <mail@alexjackson.uk>"]
 
 [dependencies]
 # We're not using any external dependencies for core functionality
