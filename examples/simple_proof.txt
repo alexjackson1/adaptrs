@@ -1,0 +1,6 @@
+# Sample adaptive logic proof
+# Uses disjunctive syllogism which introduces an abnormality condition
+
+1. P ∨ Q                         PREM
+2. ¬P                           PREM
+3. Q                            1,2 DS {(P ∨ Q) ∧ ¬P ∧ ¬Q}
