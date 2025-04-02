@@ -1,94 +1,114 @@
-# Adaptrs: Adaptive Logic Proof Verifier
+# Adaptive Logic Proof Verifier
 
-Adaptrs is a Rust implementation of a proof verifier for adaptive logic systems. Adaptive logics are formal frameworks for nonmonotonic reasoning, where conclusions can be withdrawn when new information is added.
+A Rust implementation of a proof verifier for adaptive logics, a formal framework for nonmonotonic reasoning where conclusions can be withdrawn when new information is added.
+
+## Overview
+
+Adaptive logics provide a formal framework for nonmonotonic reasoning, where conclusions that are derived at one stage may be withdrawn at a later stage when more premises are added. This proof verifier implements:
+
+1. A lower limit logic (classical propositional logic without disjunctive syllogism and ex falso quodlibet)
+2. An upper limit logic (full classical propositional logic)
+3. Abnormality tracking for inconsistencies
+4. Two adaptive strategies:
+   - Reliability strategy
+   - Minimal abnormality strategy
 
 ## Features
 
-- Formula representation with propositional variables and operators (¬, ∧, ∨, →, ↔)
-- Proof verification with line-by-line justification checking
-- Support for both reliability and minimal abnormality strategies
-- Tracking of abnormality conditions (disjunctive syllogism violations and contradictions)
-- CLI interface for verifying proofs from files
+- Parse and verify proofs in adaptive logic
+- Robust formula parsing with nom parser combinators
+- Identify abnormalities (contradictions, disjunctive syllogism violations)
+- Apply adaptive strategies to mark invalid lines
+- Provide detailed verification results
+- Support for various proof rule notations
 
 ## Installation
 
-With Rust and Cargo installed:
+Clone the repository and build using Cargo:
 
 ```bash
-git clone https://github.com/your-username/adaptrs.git
+git clone https://github.com/yourusername/adaptrs.git
 cd adaptrs
 cargo build --release
 ```
 
 ## Usage
 
-### CLI
+Verify a proof file using the reliability strategy:
 
 ```bash
-# Verify a proof file with the reliability strategy
-cargo run -- verify --file examples/simple_proof.txt --strategy reliability --verbose
-
-# Verify a proof file with the minimal abnormality strategy
-cargo run -- verify --file examples/simple_proof.txt --strategy minimal --verbose
+adaptrs verify --file examples/simple_proof.txt --strategy reliability
 ```
 
-### Library
+For detailed verification information:
 
-```rust
-use adaptrs::formula::Formula;
-use adaptrs::proof::{Proof, Rule};
-use adaptrs::strategy::AdaptiveStrategy;
-use adaptrs::verifier::verify_proof;
-use std::collections::HashSet;
-
-// Create a new proof with reliability strategy
-let mut proof = Proof::new(AdaptiveStrategy::Reliability);
-
-// Add premises and derived lines
-let p = Formula::var("P");
-let q = Formula::var("Q");
-proof.add_premise(p.clone());
-proof.add_premise(q.clone());
-proof.add_line(
-    Formula::conj(p, q),
-    Rule::AndIntro,
-    vec![1, 2],
-    HashSet::new()
-);
-
-// Verify the proof
-let result = verify_proof(&mut proof);
-println!("Proof is valid: {}", result.valid);
+```bash
+adaptrs verify --file examples/simple_proof.txt --strategy reliability --verbose
 ```
 
-## Proof Format
+## Proof File Format
 
-Proofs are specified in a text file with the following format:
+Proof files use a simple syntax:
 
 ```
-# Comments start with #
-1. Formula                   PREM
-2. Formula                   PREM
-3. Formula                   1,2 Rule {Abnormality conditions}
+1. P ∨ Q                         PREM
+2. ¬P                           PREM
+3. Q                            1,2 DS {(P ∨ Q) ∧ ¬P ∧ ¬Q}
 ```
 
-Where:
-- Line numbers are sequential
-- Formulas use standard logical notation (P, Q, ¬, ∧, ∨, →, ↔)
-- Justifications can be PREM or refer to previous lines with a rule
-- Abnormality conditions are optional and enclosed in curly braces
+Each line contains:
+1. Line number
+2. Formula
+3. Justification (rule and reference lines)
+4. Conditions (abnormalities) in curly braces for conditional derivations
 
-## Supported Rules
+## Adaptive Logic Rules
 
-- Premise (PREM)
-- Conjunction introduction (∧I)
-- Conjunction elimination (∧E1, ∧E2)
-- Disjunction introduction (∨I1, ∨I2)
-- Modus ponens (MP)
-- Modus tollens (MT)
-- Disjunctive syllogism (DS)
-- Ex falso quodlibet (EFQ)
+- **PREM**: Premise introduction
+- **Unconditional Rules**:
+  - ∧I/AND-I: Conjunction Introduction
+  - ∧E1/AND-E1: Conjunction Elimination (first conjunct)
+  - ∧E2/AND-E2: Conjunction Elimination (second conjunct)
+  - ∨I1/OR-I1: Disjunction Introduction (from first disjunct)
+  - ∨I2/OR-I2: Disjunction Introduction (from second disjunct)
+  - MP: Modus Ponens
+  - MT: Modus Tollens
+- **Conditional Rules**:
+  - DS: Disjunctive Syllogism
+  - EFQ: Ex Falso Quodlibet
+
+## Formula Syntax
+
+The parser supports a wide range of propositional logic formula notations:
+
+### Variables
+- Single characters: `P`, `Q`, `R`
+- Multi-character names: `Prop1`, `Assert`, `P_1`
+
+### Logical Operators
+- Negation: `¬P`, `~P`, `!P`
+- Conjunction: `P ∧ Q`, `P & Q`, `P && Q`, `P and Q`
+- Disjunction: `P ∨ Q`, `P | Q`, `P || Q`, `P or Q`
+- Implication: `P → Q`, `P -> Q`, `P implies Q`
+- Biconditional: `P ↔ Q`, `P <-> Q`, `P iff Q`
+
+### Operator Precedence
+The parser correctly handles operator precedence:
+1. Parentheses: `(P ∧ Q)`
+2. Negation: `¬P`
+3. Conjunction: `P ∧ Q`
+4. Disjunction: `P ∨ Q`
+5. Implication: `P → Q`
+6. Biconditional: `P ↔ Q`
+
+For example, `P ∧ Q ∨ R` is parsed as `(P ∧ Q) ∨ R` due to conjunction having higher precedence than disjunction.
+
+### Whitespace Flexibility
+The parser handles various spacing patterns:
+- Standard spacing: `P ∧ Q`
+- No spaces: `P∧Q`
+- Extra spaces: `P   ∧   Q`
 
 ## License
 
-[MIT](LICENSE)
+This project is licensed under the MIT License - see the LICENSE file for details.

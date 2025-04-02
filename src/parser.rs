@@ -124,51 +124,119 @@ fn parse_atom(input: &str) -> IRes<&str, Formula> {
     )(input)
 }
 
-/// Parse a binary operator
-fn parse_binary_op(input: &str) -> IRes<&str, &str> {
+/// Parse a conjunction operator (∧, &, &&, and)
+fn parse_conj_op(input: &str) -> IRes<&str, &str> {
     context(
-        "binary_op",
+        "conjunction_op",
         alt((
             tag("∧"),
+            tag("&&"), // Try matching longer operators first
             tag("&"),
-            tag("&&"),
             tag("and"),
-            tag("∨"),
-            tag("|"),
-            tag("||"),
-            tag("or"),
-            tag("→"),
-            tag("->"),
-            tag("implies"),
-            tag("↔"),
-            tag("<->"),
-            tag("iff"),
         )),
     )(input)
 }
 
-/// Parse a formula with a binary operator
-fn parse_binary_formula(input: &str) -> IRes<&str, Formula> {
+/// Parse a disjunction operator (∨, |, ||, or)
+fn parse_disj_op(input: &str) -> IRes<&str, &str> {
     context(
-        "binary_formula",
-        map(
-            tuple((parse_atom, space0, parse_binary_op, space0, parse_formula)),
-            |(left, _, op, _, right)| {
-                match op {
-                    "∧" | "&" | "&&" | "and" => Formula::conj(left, right),
-                    "∨" | "|" | "||" | "or" => Formula::disj(left, right),
-                    "→" | "->" | "implies" => Formula::impl_(left, right),
-                    "↔" | "<->" | "iff" => Formula::bicon(left, right),
-                    _ => unreachable!(), // This is unreachable due to parse_binary_op
-                }
-            },
-        ),
+        "disjunction_op",
+        alt((
+            tag("∨"),
+            tag("||"), // Try matching longer operators first
+            tag("|"),
+            tag("or"),
+        )),
     )(input)
 }
 
-/// Parse any formula
+/// Parse an implication operator (→, ->, implies)
+fn parse_impl_op(input: &str) -> IRes<&str, &str> {
+    context("implication_op", alt((tag("→"), tag("->"), tag("implies"))))(input)
+}
+
+/// Parse a biconditional operator (↔, <->, iff)
+fn parse_bicon_op(input: &str) -> IRes<&str, &str> {
+    context("biconditional_op", alt((tag("↔"), tag("<->"), tag("iff"))))(input)
+}
+
+/// Parse a biconditional formula (lowest precedence)
+fn parse_biconditional(input: &str) -> IRes<&str, Formula> {
+    context(
+        "biconditional",
+        alt((
+            map(
+                tuple((
+                    parse_implication,
+                    space0,
+                    parse_bicon_op,
+                    space0,
+                    parse_biconditional,
+                )),
+                |(left, _, _, _, right)| Formula::bicon(left, right),
+            ),
+            parse_implication,
+        )),
+    )(input)
+}
+
+/// Parse an implication formula (second lowest precedence)
+fn parse_implication(input: &str) -> IRes<&str, Formula> {
+    context(
+        "implication",
+        alt((
+            map(
+                tuple((
+                    parse_disjunction,
+                    space0,
+                    parse_impl_op,
+                    space0,
+                    parse_implication,
+                )),
+                |(left, _, _, _, right)| Formula::impl_(left, right),
+            ),
+            parse_disjunction,
+        )),
+    )(input)
+}
+
+/// Parse a disjunction formula (medium precedence)
+fn parse_disjunction(input: &str) -> IRes<&str, Formula> {
+    context(
+        "disjunction",
+        alt((
+            map(
+                tuple((
+                    parse_conjunction,
+                    space0,
+                    parse_disj_op,
+                    space0,
+                    parse_disjunction,
+                )),
+                |(left, _, _, _, right)| Formula::disj(left, right),
+            ),
+            parse_conjunction,
+        )),
+    )(input)
+}
+
+/// Parse a conjunction formula (high precedence)
+fn parse_conjunction(input: &str) -> IRes<&str, Formula> {
+    context(
+        "conjunction",
+        alt((
+            map(
+                tuple((parse_atom, space0, parse_conj_op, space0, parse_conjunction)),
+                |(left, _, _, _, right)| Formula::conj(left, right),
+            ),
+            parse_atom,
+        )),
+    )(input)
+}
+
+/// Parse any formula (entry point for formula parsing)
 fn parse_formula(input: &str) -> IRes<&str, Formula> {
-    context("formula", alt((parse_binary_formula, parse_atom)))(input)
+    context("formula", parse_biconditional)(input)
 }
 
 /// Public API to parse a formula
@@ -732,5 +800,193 @@ mod tests {
         assert_eq!(proof.lines[0].line_number, 1);
         assert_eq!(proof.lines[1].line_number, 2);
         assert_eq!(proof.lines[2].line_number, 3);
+    }
+
+    #[test]
+    fn test_formula_precedence() {
+        // Test conjunction has higher precedence than disjunction
+        assert_eq!(
+            parse_formula_str("P ∧ Q ∨ R").unwrap(),
+            Formula::disj(
+                Formula::conj(Formula::var("P"), Formula::var("Q")),
+                Formula::var("R")
+            )
+        );
+
+        // Test disjunction has higher precedence than implication
+        assert_eq!(
+            parse_formula_str("P ∨ Q → R").unwrap(),
+            Formula::impl_(
+                Formula::disj(Formula::var("P"), Formula::var("Q")),
+                Formula::var("R")
+            )
+        );
+
+        // Test negation has highest precedence
+        assert_eq!(
+            parse_formula_str("¬P ∧ Q").unwrap(),
+            Formula::conj(Formula::neg(Formula::var("P")), Formula::var("Q"))
+        );
+
+        // Test multiple negations
+        assert_eq!(
+            parse_formula_str("¬¬P").unwrap(),
+            Formula::neg(Formula::neg(Formula::var("P")))
+        );
+
+        // Test parentheses override precedence
+        assert_eq!(
+            parse_formula_str("P ∧ (Q ∨ R) → S").unwrap(),
+            Formula::impl_(
+                Formula::conj(
+                    Formula::var("P"),
+                    Formula::disj(Formula::var("Q"), Formula::var("R"))
+                ),
+                Formula::var("S")
+            )
+        );
+
+        // Test complex nested expression
+        assert_eq!(
+            parse_formula_str("(P → Q) ∧ (R ∨ ¬S) ↔ T").unwrap(),
+            Formula::bicon(
+                Formula::conj(
+                    Formula::impl_(Formula::var("P"), Formula::var("Q")),
+                    Formula::disj(Formula::var("R"), Formula::neg(Formula::var("S")))
+                ),
+                Formula::var("T")
+            )
+        );
+    }
+
+    #[test]
+    fn test_formula_whitespace_handling() {
+        // Test with extra whitespace
+        assert_eq!(
+            parse_formula_str("  P   ∧   Q  ").unwrap(),
+            Formula::conj(Formula::var("P"), Formula::var("Q"))
+        );
+
+        // Test with no whitespace
+        assert_eq!(
+            parse_formula_str("P∧Q").unwrap(),
+            Formula::conj(Formula::var("P"), Formula::var("Q"))
+        );
+
+        // Test with unusual spacing in nested expressions
+        assert_eq!(
+            parse_formula_str("P∧(  Q  ∨R )").unwrap(),
+            Formula::conj(
+                Formula::var("P"),
+                Formula::disj(Formula::var("Q"), Formula::var("R"))
+            )
+        );
+    }
+
+    #[test]
+    fn test_formula_alternative_syntax() {
+        // Test different notations for conjunction
+        assert_eq!(
+            parse_formula_str("P and Q").unwrap(),
+            Formula::conj(Formula::var("P"), Formula::var("Q"))
+        );
+        assert_eq!(
+            parse_formula_str("P && Q").unwrap(),
+            Formula::conj(Formula::var("P"), Formula::var("Q"))
+        );
+
+        // Test different notations for disjunction
+        assert_eq!(
+            parse_formula_str("P or Q").unwrap(),
+            Formula::disj(Formula::var("P"), Formula::var("Q"))
+        );
+        assert_eq!(
+            parse_formula_str("P || Q").unwrap(),
+            Formula::disj(Formula::var("P"), Formula::var("Q"))
+        );
+
+        // Test different notations for implication
+        assert_eq!(
+            parse_formula_str("P implies Q").unwrap(),
+            Formula::impl_(Formula::var("P"), Formula::var("Q"))
+        );
+
+        // Test different notations for biconditional
+        assert_eq!(
+            parse_formula_str("P iff Q").unwrap(),
+            Formula::bicon(Formula::var("P"), Formula::var("Q"))
+        );
+
+        // Test different notations for negation
+        assert_eq!(
+            parse_formula_str("!P").unwrap(),
+            Formula::neg(Formula::var("P"))
+        );
+    }
+
+    #[test]
+    fn test_complex_formula_examples() {
+        // Modus ponens example
+        assert_eq!(
+            parse_formula_str("(P → Q) ∧ P → Q").unwrap(),
+            Formula::impl_(
+                Formula::conj(
+                    Formula::impl_(Formula::var("P"), Formula::var("Q")),
+                    Formula::var("P")
+                ),
+                Formula::var("Q")
+            )
+        );
+
+        // Disjunctive syllogism example
+        assert_eq!(
+            parse_formula_str("(P ∨ Q) ∧ ¬P → Q").unwrap(),
+            Formula::impl_(
+                Formula::conj(
+                    Formula::disj(Formula::var("P"), Formula::var("Q")),
+                    Formula::neg(Formula::var("P"))
+                ),
+                Formula::var("Q")
+            )
+        );
+
+        // De Morgan's law example
+        assert_eq!(
+            parse_formula_str("¬(P ∧ Q) ↔ (¬P ∨ ¬Q)").unwrap(),
+            Formula::bicon(
+                Formula::neg(Formula::conj(Formula::var("P"), Formula::var("Q"))),
+                Formula::disj(
+                    Formula::neg(Formula::var("P")),
+                    Formula::neg(Formula::var("Q"))
+                )
+            )
+        );
+    }
+
+    #[test]
+    fn test_formula_with_multi_character_variables() {
+        // Test variables with multiple characters
+        assert_eq!(
+            parse_formula_str("Prop1 ∧ Prop2").unwrap(),
+            Formula::conj(Formula::var("Prop1"), Formula::var("Prop2"))
+        );
+
+        // Test with underscores
+        assert_eq!(
+            parse_formula_str("P_1 → Q_test").unwrap(),
+            Formula::impl_(Formula::var("P_1"), Formula::var("Q_test"))
+        );
+
+        // Test complex formula with multi-character variables
+        assert_eq!(
+            parse_formula_str("(Assert1 ∨ Assert2) ∧ ¬Assert1 → Assert2").unwrap(),
+            Formula::impl_(
+                Formula::conj(
+                    Formula::disj(Formula::var("Assert1"), Formula::var("Assert2")),
+                    Formula::neg(Formula::var("Assert1"))
+                ),
+                Formula::var("Assert2")
+            )
+        );
     }
 }
