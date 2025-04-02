@@ -6,12 +6,8 @@ description = "An adaptive logic proof verifier"
 authors = ["Alex Jackson <mail@alexjackson.uk>"]
 
 [dependencies]
-# We're not using any external dependencies for core functionality
-# In a real application, you might want to add:
-# - clap for CLI argument parsing
-# - thiserror for error handling
-# - log for logging
-# - etc.
+nom = "7.1.3"
+thiserror = "1.0.56"
 
 [lib]
 name = "adaptrs"

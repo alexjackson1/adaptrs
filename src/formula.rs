@@ -56,8 +56,10 @@ impl Formula {
             Formula::Neg(f) => {
                 result.extend(f.subformulas());
             }
-            Formula::Conj(left, right) | Formula::Disj(left, right) | 
-            Formula::Impl(left, right) | Formula::Bicon(left, right) => {
+            Formula::Conj(left, right)
+            | Formula::Disj(left, right)
+            | Formula::Impl(left, right)
+            | Formula::Bicon(left, right) => {
                 result.extend(left.subformulas());
                 result.extend(right.subformulas());
             }
@@ -71,18 +73,30 @@ impl fmt::Display for Formula {
         match self {
             Formula::Var(name) => write!(f, "{}", name),
             Formula::Neg(formula) => write!(f, "¬{}", parenthesize_if_needed(formula)),
-            Formula::Conj(left, right) => write!(f, "{} ∧ {}", 
-                parenthesize_if_needed(left), 
-                parenthesize_if_needed(right)),
-            Formula::Disj(left, right) => write!(f, "{} ∨ {}", 
-                parenthesize_if_needed(left), 
-                parenthesize_if_needed(right)),
-            Formula::Impl(left, right) => write!(f, "{} → {}", 
-                parenthesize_if_needed(left), 
-                parenthesize_if_needed(right)),
-            Formula::Bicon(left, right) => write!(f, "{} ↔ {}", 
-                parenthesize_if_needed(left), 
-                parenthesize_if_needed(right)),
+            Formula::Conj(left, right) => write!(
+                f,
+                "{} ∧ {}",
+                parenthesize_if_needed(left),
+                parenthesize_if_needed(right)
+            ),
+            Formula::Disj(left, right) => write!(
+                f,
+                "{} ∨ {}",
+                parenthesize_if_needed(left),
+                parenthesize_if_needed(right)
+            ),
+            Formula::Impl(left, right) => write!(
+                f,
+                "{} → {}",
+                parenthesize_if_needed(left),
+                parenthesize_if_needed(right)
+            ),
+            Formula::Bicon(left, right) => write!(
+                f,
+                "{} ↔ {}",
+                parenthesize_if_needed(left),
+                parenthesize_if_needed(right)
+            ),
         }
     }
 }
@@ -105,31 +119,43 @@ mod tests {
         let q = Formula::var("Q");
         let not_p = Formula::neg(p.clone());
         let p_and_q = Formula::conj(p.clone(), q.clone());
-        
+
         // Check creation of basic operators
         assert_eq!(not_p, Formula::Neg(Box::new(Formula::Var("P".to_string()))));
-        assert_eq!(p_and_q, Formula::Conj(
-            Box::new(Formula::Var("P".to_string())),
-            Box::new(Formula::Var("Q".to_string()))
-        ));
-        
+        assert_eq!(
+            p_and_q,
+            Formula::Conj(
+                Box::new(Formula::Var("P".to_string())),
+                Box::new(Formula::Var("Q".to_string()))
+            )
+        );
+
         // Create and test other operators (just to avoid unused variable warnings)
         let p_or_q = Formula::disj(p.clone(), q.clone());
         let p_impl_q = Formula::impl_(p.clone(), q.clone());
         let p_bicon_q = Formula::bicon(p.clone(), q.clone());
-        
-        assert_eq!(p_or_q, Formula::Disj(
-            Box::new(Formula::Var("P".to_string())),
-            Box::new(Formula::Var("Q".to_string()))
-        ));
-        assert_eq!(p_impl_q, Formula::Impl(
-            Box::new(Formula::Var("P".to_string())),
-            Box::new(Formula::Var("Q".to_string()))
-        ));
-        assert_eq!(p_bicon_q, Formula::Bicon(
-            Box::new(Formula::Var("P".to_string())),
-            Box::new(Formula::Var("Q".to_string()))
-        ));
+
+        assert_eq!(
+            p_or_q,
+            Formula::Disj(
+                Box::new(Formula::Var("P".to_string())),
+                Box::new(Formula::Var("Q".to_string()))
+            )
+        );
+        assert_eq!(
+            p_impl_q,
+            Formula::Impl(
+                Box::new(Formula::Var("P".to_string())),
+                Box::new(Formula::Var("Q".to_string()))
+            )
+        );
+        assert_eq!(
+            p_bicon_q,
+            Formula::Bicon(
+                Box::new(Formula::Var("P".to_string())),
+                Box::new(Formula::Var("Q".to_string()))
+            )
+        );
     }
 
     #[test]
@@ -139,14 +165,14 @@ mod tests {
         let not_p = Formula::neg(p.clone());
         let p_and_q = Formula::conj(p.clone(), q.clone());
         let complex = Formula::impl_(
-            Formula::disj(p.clone(), q.clone()), 
-            Formula::neg(p_and_q.clone())
+            Formula::disj(p.clone(), q.clone()),
+            Formula::neg(p_and_q.clone()),
         );
 
         assert_eq!(p.to_string(), "P");
         assert_eq!(not_p.to_string(), "¬P");
         assert_eq!(p_and_q.to_string(), "P ∧ Q");
-        
+
         // Fix the assertion to match the actual output with the parentheses
         let actual = complex.to_string();
         let expected = "(P ∨ Q) → (¬(P ∧ Q))";

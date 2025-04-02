@@ -10,8 +10,8 @@ mod verifier;
 pub use abnormality::{Abnormality, AbnormalitySet};
 pub use formula::Formula;
 pub use parser::{
-    parse_abnormality, parse_formula, parse_justification, parse_proof, parse_proof_line,
-    parse_rule,
+    parse_abnormality, parse_formula_str as parse_formula, parse_justification, parse_proof,
+    parse_proof_line, parse_rule, ParserError,
 };
 pub use proof::{Justification, Proof, ProofLine, Rule};
 pub use strategy::AdaptiveStrategy;

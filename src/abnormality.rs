@@ -1,6 +1,6 @@
+use crate::formula::Formula;
 use std::collections::HashSet;
 use std::fmt;
-use crate::formula::Formula;
 
 /// Represents an abnormality in the adaptive logic system
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -30,10 +30,8 @@ impl Abnormality {
                 let neg_a = Formula::neg(a.clone());
                 let neg_b = Formula::neg(b.clone());
                 Formula::conj(disj, Formula::conj(neg_a, neg_b))
-            },
-            Abnormality::Contradiction(a) => {
-                Formula::conj(a.clone(), Formula::neg(a.clone()))
             }
+            Abnormality::Contradiction(a) => Formula::conj(a.clone(), Formula::neg(a.clone())),
         }
     }
 
@@ -64,7 +62,7 @@ impl fmt::Display for Abnormality {
         match self {
             Abnormality::DisjunctiveSyllogismViolation(a, b) => {
                 write!(f, "({} ∨ {}) ∧ ¬{} ∧ ¬{}", a, b, a, b)
-            },
+            }
             Abnormality::Contradiction(a) => {
                 write!(f, "{} ∧ ¬{}", a, a)
             }
@@ -83,21 +81,24 @@ mod tests {
     fn test_abnormality_creation() {
         let p = Formula::var("P");
         let q = Formula::var("Q");
-        
+
         let contradiction = Abnormality::contradiction(p.clone());
         let disj_syll_violation = Abnormality::disj_syll_violation(p.clone(), q.clone());
-        
+
         assert_eq!(contradiction, Abnormality::Contradiction(p.clone()));
-        assert_eq!(disj_syll_violation, Abnormality::DisjunctiveSyllogismViolation(p.clone(), q.clone()));
+        assert_eq!(
+            disj_syll_violation,
+            Abnormality::DisjunctiveSyllogismViolation(p.clone(), q.clone())
+        );
     }
 
     #[test]
     fn test_abnormality_to_formula() {
         let p = Formula::var("P");
-        
+
         let contradiction = Abnormality::contradiction(p.clone());
         let formula = contradiction.to_formula();
-        
+
         let expected = Formula::conj(p.clone(), Formula::neg(p.clone()));
         assert_eq!(formula, expected);
     }
