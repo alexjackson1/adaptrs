@@ -295,14 +295,18 @@ impl Abnormality {
                                 && Self::is_negation_of(third, b_box)
                             {
                                 // Directly compare Formula objects instead of string representations
-                                if Formula::var(a_name) == **a_box && Formula::var(b_name) == **b_box {
+                                if Formula::var(a_name) == **a_box
+                                    && Formula::var(b_name) == **b_box
+                                {
                                     return Some((a, b));
                                 }
                             } else if Self::is_negation_of(second, b_box)
                                 && Self::is_negation_of(third, a_box)
                             {
                                 // Directly compare Formula objects instead of string representations
-                                if Formula::var(a_name) == **a_box && Formula::var(b_name) == **b_box {
+                                if Formula::var(a_name) == **a_box
+                                    && Formula::var(b_name) == **b_box
+                                {
                                     return Some((a, b));
                                 }
                             }

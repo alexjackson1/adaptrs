@@ -327,7 +327,7 @@ mod tests {
         // The line should be marked if the DS violation is derived
         // For this test, we don't have ¬Q in the proof, so the DS violation isn't derived
         assert!(!proof.lines[2].marked);
-        
+
         // Check that abnormalities are being stored properly
         assert!(proof.derived_abnormalities.is_empty());
 
@@ -340,7 +340,7 @@ mod tests {
 
         // Now line 3 should be marked because the DS violation can be derived
         assert!(proof.lines[2].marked);
-        
+
         // Check that the DS violation is properly stored in the proof
         assert!(!proof.derived_abnormalities.is_empty());
         let expected_abnormality = Abnormality::disj_syll_violation(p.clone(), q.clone());

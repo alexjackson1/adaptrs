@@ -93,11 +93,15 @@ fn main() {
 
             // Display derived abnormalities
             if !proof.derived_abnormalities.is_empty() {
-                println!("Detected abnormalities: {}", 
-                    proof.derived_abnormalities.iter()
+                println!(
+                    "Detected abnormalities: {}",
+                    proof
+                        .derived_abnormalities
+                        .iter()
                         .map(|a| a.to_string())
                         .collect::<Vec<_>>()
-                        .join(", "));
+                        .join(", ")
+                );
             }
 
             if args.verbose {
