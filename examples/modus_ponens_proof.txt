@@ -1,0 +1,6 @@
+# Simple proof using Modus Ponens
+# Tests basic Modus Ponens application
+
+1. P                      PREM
+2. P → Q                  PREM
+3. Q                      2,1 ModusPonens

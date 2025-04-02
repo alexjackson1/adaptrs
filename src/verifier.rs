@@ -1,6 +1,6 @@
 use crate::formula::Formula;
 use crate::lll::LowerLimitLogic;
-use crate::proof::{Justification, Proof};
+use crate::proof::{Justification, LogicRule, Proof};
 
 /// Result of proof verification
 #[derive(Debug)]
@@ -71,17 +71,22 @@ pub fn verify_proof(proof: &mut Proof) -> VerificationResult {
                         if line.formula == expected_formula
                             && line.conditions == expected_conditions
                         {
+                            // Use the rule description to provide a more detailed explanation
                             result.details.push(format!(
-                                "Line {}: Valid application of rule {:?}",
-                                line_num, rule
+                                "Line {}: Valid application of rule {} ({})",
+                                line_num,
+                                rule,
+                                rule.description()
                             ));
                         }
                     }
                     None => {
                         result.valid = false;
                         result.details.push(format!(
-                            "Line {}: Invalid application of rule {:?}",
-                            line_num, rule
+                            "Line {}: Invalid application of rule {} ({})",
+                            line_num,
+                            rule,
+                            rule.description()
                         ));
                     }
                 }

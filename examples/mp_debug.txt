@@ -1,0 +1,7 @@
+# Debugging Modus Ponens
+# The simplest possible case
+
+1. P                      PREM
+2. P → Q                  PREM 
+3. P                      PREM
+4. Q                      2,3 ModusPonens

@@ -1,0 +1,6 @@
+# Simple valid proof that should work correctly
+# Uses only basic rules that are well-tested
+
+1. P                      PREM
+2. Q                      PREM
+3. P ∧ Q                  1,2 AndIntro

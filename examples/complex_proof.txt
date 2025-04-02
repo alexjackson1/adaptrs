@@ -3,16 +3,10 @@
 
 1. P ∨ Q                  PREM
 2. ¬P                     PREM
-3. P → R                  PREM
-4. Q → S                  PREM
-5. (R ∨ S) → T            PREM
-6. Q                      1,2 DisjSyll {(P ∨ Q) ∧ ¬P ∧ ¬Q}
-7. S                      6,4 ModusPonens {(P ∨ Q) ∧ ¬P ∧ ¬Q}
-8. ¬R → ¬P                3 ContrapositiveEquiv
-9. ¬¬P → ¬¬R              8 ContrapositiveEquiv
-10. ¬¬P                   2 DoubleNegIntro
-11. ¬¬R                   9,10 ModusPonens
-12. R                     11 DoubleNegElim
-13. R ∨ S                 12,7 OrIntro2 {(P ∨ Q) ∧ ¬P ∧ ¬Q}
-14. (R ∨ S) ∧ ((R ∨ S) → T) 13,5 AndIntro {(P ∨ Q) ∧ ¬P ∧ ¬Q}
-15. T                     14 ModusPonens {(P ∨ Q) ∧ ¬P ∧ ¬Q}
+3. Q                      1,2 DisjSyll {(P ∨ Q) ∧ ¬P ∧ ¬Q}
+4. Q → R                  PREM
+5. R                      3,4 ModusPonens {(P ∨ Q) ∧ ¬P ∧ ¬Q}
+6. R → S                  PREM 
+7. S                      5,6 ModusPonens {(P ∨ Q) ∧ ¬P ∧ ¬Q}
+8. S → T                  PREM
+9. T                      7,8 ModusPonens {(P ∨ Q) ∧ ¬P ∧ ¬Q}

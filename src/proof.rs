@@ -4,6 +4,65 @@ use crate::strategy::AdaptiveStrategy;
 use std::collections::HashSet;
 use std::fmt;
 
+/// Trait for defining how rules of inference behave in adaptive logic
+pub trait LogicRule {
+    /// Returns the type of the rule (Premise, Unconditional, or Conditional)
+    fn rule_type(&self) -> RuleType;
+
+    /// Returns the name or symbol for the rule
+    fn name(&self) -> &'static str;
+
+    /// Returns a description of the rule in logical notation
+    fn description(&self) -> &'static str;
+
+    /// Returns the minimum number of premises needed for this rule
+    fn min_premises(&self) -> usize;
+
+    /// Returns the maximum number of premises allowed for this rule
+    fn max_premises(&self) -> usize;
+}
+
+/// Future implementation could look like:
+///
+/// ```ignore
+/// enum MyRule {
+///     And,
+///     Or
+/// }
+///
+/// impl LogicRule for MyRule {
+///    fn rule_type(&self) -> RuleType {
+///        RuleType::Unconditional
+///    }
+///    fn name(&self) -> &'static str {
+///        match self {
+///            MyRule::And => "AND",
+///            MyRule::Or => "OR",
+///        }
+///    }
+///    fn description(&self) -> &'static str {
+///        "Example rule"
+///    }
+///    fn min_premises(&self) -> usize {
+///        2
+///    }
+///    fn max_premises(&self) -> usize {
+///        2
+///    }
+/// }
+/// ```
+
+/// Represents the type of a rule in adaptive logic
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum RuleType {
+    /// PREM: Premise introduction rule
+    Premise,
+    /// RU: Unconditional rule from the lower limit logic
+    Unconditional,
+    /// RC: Conditional rule that relies on abnormality assumptions
+    Conditional,
+}
+
 /// Represents a rule of inference in the adaptive logic system
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Rule {
@@ -39,23 +98,121 @@ pub enum Rule {
     ExFalso,
 }
 
+impl LogicRule for Rule {
+    fn rule_type(&self) -> RuleType {
+        match self {
+            Rule::Prem => RuleType::Premise,
+
+            // Unconditional rules (part of lower limit logic)
+            Rule::AndIntro
+            | Rule::AndElim1
+            | Rule::AndElim2
+            | Rule::OrIntro1
+            | Rule::OrIntro2
+            | Rule::ModusPonens
+            | Rule::ModusTollens
+            | Rule::ContrapositiveEquiv
+            | Rule::DoubleNegIntro
+            | Rule::DoubleNegElim => RuleType::Unconditional,
+
+            // Conditional rules (require abnormality assumptions)
+            Rule::DisjSyll | Rule::ExFalso => RuleType::Conditional,
+        }
+    }
+
+    fn name(&self) -> &'static str {
+        match self {
+            Rule::Prem => "PREM",
+            Rule::AndIntro => "∧I",
+            Rule::AndElim1 => "∧E1",
+            Rule::AndElim2 => "∧E2",
+            Rule::OrIntro1 => "∨I1",
+            Rule::OrIntro2 => "∨I2",
+            Rule::ModusPonens => "MP",
+            Rule::ModusTollens => "MT",
+            Rule::ContrapositiveEquiv => "CE",
+            Rule::DoubleNegIntro => "DNI",
+            Rule::DoubleNegElim => "DNE",
+            Rule::DisjSyll => "DS",
+            Rule::ExFalso => "EFQ",
+        }
+    }
+
+    fn description(&self) -> &'static str {
+        match self {
+            Rule::Prem => "Premise introduction",
+            Rule::AndIntro => "Conjunction introduction: A, B ⊢ A ∧ B",
+            Rule::AndElim1 => "Conjunction elimination 1: A ∧ B ⊢ A",
+            Rule::AndElim2 => "Conjunction elimination 2: A ∧ B ⊢ B",
+            Rule::OrIntro1 => "Disjunction introduction 1: A ⊢ A ∨ B",
+            Rule::OrIntro2 => "Disjunction introduction 2: B ⊢ A ∨ B",
+            Rule::ModusPonens => "Modus ponens: A, A → B ⊢ B",
+            Rule::ModusTollens => "Modus tollens: A → B, ¬B ⊢ ¬A",
+            Rule::ContrapositiveEquiv => "Contrapositive equivalence: P → Q ⊢ ¬Q → ¬P",
+            Rule::DoubleNegIntro => "Double negation introduction: P ⊢ ¬¬P",
+            Rule::DoubleNegElim => "Double negation elimination: ¬¬P ⊢ P",
+            Rule::DisjSyll => "Disjunctive syllogism: A ∨ B, ¬A ⊢ B",
+            Rule::ExFalso => "Ex falso quodlibet: A ∧ ¬A ⊢ B",
+        }
+    }
+
+    fn min_premises(&self) -> usize {
+        match self {
+            Rule::Prem => 0,
+            Rule::AndIntro => 2,
+            Rule::AndElim1 => 1,
+            Rule::AndElim2 => 1,
+            Rule::OrIntro1 => 1,
+            Rule::OrIntro2 => 1,
+            Rule::ModusPonens => 2, // Standard case requires two premises
+            Rule::ModusTollens => 2,
+            Rule::ContrapositiveEquiv => 1,
+            Rule::DoubleNegIntro => 1,
+            Rule::DoubleNegElim => 1,
+            Rule::DisjSyll => 2,
+            Rule::ExFalso => 2,
+        }
+    }
+
+    fn max_premises(&self) -> usize {
+        match self {
+            Rule::Prem => 0,
+            Rule::AndIntro => 2,
+            Rule::AndElim1 => 1,
+            Rule::AndElim2 => 1,
+            Rule::OrIntro1 => 2,    // B is optional
+            Rule::OrIntro2 => 2,    // A is optional
+            Rule::ModusPonens => 2, // Requires exactly 2 premises: A and (A → B)
+            Rule::ModusTollens => 2,
+            Rule::ContrapositiveEquiv => 1,
+            Rule::DoubleNegIntro => 1,
+            Rule::DoubleNegElim => 1,
+            Rule::DisjSyll => 2,
+            Rule::ExFalso => 3, // Up to 2 for contradiction and 1 for conclusion
+        }
+    }
+}
+
+impl Rule {
+    /// Returns true if the rule is a premise introduction
+    pub fn is_premise(&self) -> bool {
+        self.rule_type() == RuleType::Premise
+    }
+
+    /// Returns true if the rule is unconditional (RU)
+    pub fn is_unconditional(&self) -> bool {
+        self.rule_type() == RuleType::Unconditional
+    }
+
+    /// Returns true if the rule is conditional (RC)
+    pub fn is_conditional(&self) -> bool {
+        self.rule_type() == RuleType::Conditional
+    }
+}
+
 impl fmt::Display for Rule {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Rule::Prem => write!(f, "PREM"),
-            Rule::AndIntro => write!(f, "∧I"),
-            Rule::AndElim1 => write!(f, "∧E1"),
-            Rule::AndElim2 => write!(f, "∧E2"),
-            Rule::OrIntro1 => write!(f, "∨I1"),
-            Rule::OrIntro2 => write!(f, "∨I2"),
-            Rule::ModusPonens => write!(f, "MP"),
-            Rule::ModusTollens => write!(f, "MT"),
-            Rule::ContrapositiveEquiv => write!(f, "CE"),
-            Rule::DoubleNegIntro => write!(f, "DNI"),
-            Rule::DoubleNegElim => write!(f, "DNE"),
-            Rule::DisjSyll => write!(f, "DS"),
-            Rule::ExFalso => write!(f, "EFQ"),
-        }
+        write!(f, "{}", self.name())
     }
 }
 

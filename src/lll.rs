@@ -1,13 +1,72 @@
 use crate::abnormality::{Abnormality, AbnormalitySet};
 use crate::formula::Formula;
-use crate::proof::{Proof, Rule};
+use crate::proof::{LogicRule, Proof, Rule, RuleType};
 
 /// Implements the lower limit logic rules
 pub struct LowerLimitLogic;
 
 impl LowerLimitLogic {
+    /// Validates that a rule application has the correct number of premises
+    pub fn validate_rule_premises(rule: &Rule, from_lines: &[usize]) -> bool {
+        let min_premises = rule.min_premises();
+        let max_premises = rule.max_premises();
+        let num_premises = from_lines.len();
+
+        // Check that the number of premises is within the valid range
+        num_premises >= min_premises && num_premises <= max_premises
+    }
+
     /// Applies a rule to derive a new formula from given lines
     pub fn apply_rule(
+        proof: &Proof,
+        rule: Rule,
+        from_lines: &[usize],
+    ) -> Option<(Formula, AbnormalitySet)> {
+        // Validate that the rule has the correct number of premises
+        if !Self::validate_rule_premises(&rule, from_lines) {
+            // Rule has incorrect number of premises
+            return None;
+        }
+
+        // Check the rule type and apply appropriate handling
+        match rule.rule_type() {
+            RuleType::Premise => {
+                // PREM rule - premises cannot be derived
+                None
+            }
+            RuleType::Unconditional => {
+                // RU rule - apply unconditional inference and combine conditions
+                let result = Self::apply_specific_rule(proof, rule, from_lines)?;
+                let formula = result.0;
+
+                // Get conditions from referenced lines
+                let mut conditions = AbnormalitySet::new();
+                for &line_num in from_lines {
+                    if let Some(line) = proof.get_line(line_num) {
+                        conditions.extend(line.conditions.clone());
+                    }
+                }
+
+                Some((formula, conditions))
+            }
+            RuleType::Conditional => {
+                // RC rule - apply conditional inference with abnormality conditions
+                let (formula, mut conditions) = Self::apply_specific_rule(proof, rule, from_lines)?;
+
+                // Get conditions from referenced lines
+                for &line_num in from_lines {
+                    if let Some(line) = proof.get_line(line_num) {
+                        conditions.extend(line.conditions.clone());
+                    }
+                }
+
+                Some((formula, conditions))
+            }
+        }
+    }
+
+    /// Applies a specific rule to derive a formula
+    fn apply_specific_rule(
         proof: &Proof,
         rule: Rule,
         from_lines: &[usize],
@@ -121,76 +180,32 @@ impl LowerLimitLogic {
         proof: &Proof,
         from_lines: &[usize],
     ) -> Option<(Formula, AbnormalitySet)> {
-        // Regular modus ponens with 2 premises
-        if from_lines.len() == 2 {
-            let line1 = proof.get_line(from_lines[0])?;
-            let line2 = proof.get_line(from_lines[1])?;
+        // Modus ponens requires exactly 2 premises
+        if from_lines.len() != 2 {
+            return None;
+        }
 
-            // Standard condition propagation is implemented below
+        // Get the premise lines - but don't make assumptions about the order
+        let line1 = proof.get_line(from_lines[0])?;
+        let line2 = proof.get_line(from_lines[1])?;
 
-            // Check if line1 is the implication and line2 is the antecedent
-            if let Formula::Impl(antecedent, consequent) = &line1.formula {
-                if line2.formula == **antecedent {
-                    let mut conditions = line1.conditions.clone();
-                    conditions.extend(line2.conditions.clone());
-                    return Some(((**consequent).clone(), conditions));
-                }
-            }
+        // Try both orders to find which is the implication and which is the antecedent
 
-            // Check if line2 is the implication and line1 is the antecedent
-            if let Formula::Impl(antecedent, consequent) = &line2.formula {
-                if line1.formula == **antecedent {
-                    let mut conditions = line1.conditions.clone();
-                    conditions.extend(line2.conditions.clone());
-                    return Some(((**consequent).clone(), conditions));
-                }
+        // Case 1: First line is implication, second line is antecedent
+        if let Formula::Impl(antecedent, consequent) = &line1.formula {
+            if line2.formula == **antecedent {
+                let mut conditions = line1.conditions.clone();
+                conditions.extend(line2.conditions.clone());
+                return Some(((**consequent).clone(), conditions));
             }
         }
 
-        // Modus ponens from a conjunction containing an implication (with 1 premise)
-        if from_lines.len() == 1 {
-            let line = proof.get_line(from_lines[0])?;
-
-            // Handle conjunction containing an implication and its antecedent
-            // For example, for a formula like A ∧ (A → B), derive B
-            if let Formula::Conj(left, right) = &line.formula {
-                // Check if left is a formula and right is an implication
-                if let Formula::Impl(antecedent, consequent) = &**right {
-                    if **antecedent == **left {
-                        return Some(((**consequent).clone(), line.conditions.clone()));
-                    }
-                }
-                // Check if right is a formula and left is an implication
-                else if let Formula::Impl(antecedent, consequent) = &**left {
-                    if **antecedent == **right {
-                        return Some(((**consequent).clone(), line.conditions.clone()));
-                    }
-                }
-            }
-
-            // Also look for more complex patterns in the conjunction
-            let subformulas = line.formula.subformulas();
-            let mut implications = Vec::new();
-            let mut potential_antecedents = Vec::new();
-
-            // Collect all implications and potential antecedents
-            for subformula in &subformulas {
-                if let Formula::Impl(_, _) = subformula {
-                    implications.push(subformula);
-                } else {
-                    potential_antecedents.push(subformula);
-                }
-            }
-
-            // Check if any implication's antecedent matches any potential antecedent
-            for impl_formula in implications {
-                if let Formula::Impl(antecedent, consequent) = impl_formula {
-                    for potential_antecedent in &potential_antecedents {
-                        if **antecedent == **potential_antecedent {
-                            return Some(((**consequent).clone(), line.conditions.clone()));
-                        }
-                    }
-                }
+        // Case 2: Second line is implication, first line is antecedent
+        if let Formula::Impl(antecedent, consequent) = &line2.formula {
+            if line1.formula == **antecedent {
+                let mut conditions = line1.conditions.clone();
+                conditions.extend(line2.conditions.clone());
+                return Some(((**consequent).clone(), conditions));
             }
         }
 
@@ -374,6 +389,8 @@ impl LowerLimitLogic {
     }
 
     /// Apply disjunctive syllogism: A ∨ B, ¬A ⊢ B
+    /// This is a conditional rule (RC) following the form:
+    /// A₁, ..., Aₙ ⊢ₗₗₗ B ∨ Dab(Θ)
     fn apply_disj_syll(proof: &Proof, from_lines: &[usize]) -> Option<(Formula, AbnormalitySet)> {
         if from_lines.len() != 2 {
             return None;
@@ -382,26 +399,27 @@ impl LowerLimitLogic {
         let line1 = proof.get_line(from_lines[0])?;
         let line2 = proof.get_line(from_lines[1])?;
 
+        // Initialize abnormality set
+        let mut conditions = AbnormalitySet::new();
+
         // Check if we have A ∨ B and ¬A
         if let Formula::Disj(left, right) = &line1.formula {
             if let Formula::Neg(neg_formula) = &line2.formula {
                 if **neg_formula == **left {
-                    // This requires abnormality condition
-                    let mut conditions = line1.conditions.clone();
-                    conditions.extend(line2.conditions.clone());
+                    // A ∨ B, ¬A ⊢ B
+                    // Corresponding LLL derivation: A ∨ B, ¬A ⊢ B ∨ ((A ∨ B) ∧ ¬A ∧ ¬B)
 
-                    // Add disjunctive syllogism abnormality
+                    // Add the disjunctive syllogism abnormality
                     let abnormality =
                         Abnormality::disj_syll_violation((**left).clone(), (**right).clone());
                     conditions.insert(abnormality);
 
                     return Some(((**right).clone(), conditions));
                 } else if **neg_formula == **right {
-                    // If we have A ∨ B and ¬B, derive A with abnormality
-                    let mut conditions = line1.conditions.clone();
-                    conditions.extend(line2.conditions.clone());
+                    // A ∨ B, ¬B ⊢ A
+                    // Corresponding LLL derivation: A ∨ B, ¬B ⊢ A ∨ ((A ∨ B) ∧ ¬B ∧ ¬A)
 
-                    // Add disjunctive syllogism abnormality
+                    // Add the disjunctive syllogism abnormality
                     let abnormality =
                         Abnormality::disj_syll_violation((**right).clone(), (**left).clone());
                     conditions.insert(abnormality);
@@ -415,22 +433,16 @@ impl LowerLimitLogic {
         if let Formula::Disj(left, right) = &line2.formula {
             if let Formula::Neg(neg_formula) = &line1.formula {
                 if **neg_formula == **left {
-                    // If we have ¬A and A ∨ B, derive B with abnormality
-                    let mut conditions = line1.conditions.clone();
-                    conditions.extend(line2.conditions.clone());
-
-                    // Add disjunctive syllogism abnormality
+                    // ¬A, A ∨ B ⊢ B
+                    // Add the disjunctive syllogism abnormality
                     let abnormality =
                         Abnormality::disj_syll_violation((**left).clone(), (**right).clone());
                     conditions.insert(abnormality);
 
                     return Some(((**right).clone(), conditions));
                 } else if **neg_formula == **right {
-                    // If we have ¬B and A ∨ B, derive A with abnormality
-                    let mut conditions = line1.conditions.clone();
-                    conditions.extend(line2.conditions.clone());
-
-                    // Add disjunctive syllogism abnormality
+                    // ¬B, A ∨ B ⊢ A
+                    // Add the disjunctive syllogism abnormality
                     let abnormality =
                         Abnormality::disj_syll_violation((**right).clone(), (**left).clone());
                     conditions.insert(abnormality);
@@ -444,61 +456,61 @@ impl LowerLimitLogic {
     }
 
     /// Apply ex falso quodlibet: A ∧ ¬A ⊢ B
-    /// In this rule, we can derive any formula from a contradiction
+    /// This is a conditional rule (RC) that derives any formula from a contradiction
+    /// Following the form: A₁, ..., Aₙ ⊢ₗₗₗ B ∨ Dab(Θ)
     fn apply_ex_falso(proof: &Proof, from_lines: &[usize]) -> Option<(Formula, AbnormalitySet)> {
         // We expect 2-3 lines:
         // - 1-2 lines for establishing the contradiction (either a single contradiction formula or two contradictory formulas)
-        // - 1 optional line for specifying the conclusion to derive
-        if from_lines.len() < 1 || from_lines.len() > 3 {
+        // - 1 line for specifying the conclusion to derive
+        if from_lines.len() < 2 || from_lines.len() > 3 {
             return None;
         }
 
-        // We need at least 1 premise: either a contradiction or two complementary formulas
-        let premise_line = proof.get_line(from_lines[0])?;
-        let mut contradiction = None;
-        let mut conditions = premise_line.conditions.clone();
+        // Initialize abnormality set
+        let mut conditions = AbnormalitySet::new();
 
-        // Check for an explicit contradiction in a single formula
+        // Try to find a contradiction in the premises
+        let mut contradiction_found = false;
+
+        // Case 1: Check for an explicit contradiction in a single formula
+        let premise_line = proof.get_line(from_lines[0])?;
         if let Some(abnormality) = Abnormality::is_abnormality(&premise_line.formula) {
-            if let Abnormality::Contradiction(formula) = &abnormality {
-                contradiction = Some(formula.clone());
+            if let Abnormality::Contradiction(_) = &abnormality {
+                contradiction_found = true;
+                // Add the contradiction abnormality to the conditions
                 conditions.insert(abnormality);
             }
         }
 
-        // Check for contradicting formulas in two premises
-        if contradiction.is_none() && from_lines.len() >= 2 {
-            let second_line = proof.get_line(from_lines[1])?;
+        // Case 2: Check for contradicting formulas in two premises
+        if !contradiction_found && from_lines.len() >= 2 {
+            let line1 = proof.get_line(from_lines[0])?;
+            let line2 = proof.get_line(from_lines[1])?;
+
             if let Some(abnormality) =
-                Abnormality::check_contradiction(&premise_line.formula, &second_line.formula)
+                Abnormality::check_contradiction(&line1.formula, &line2.formula)
             {
-                if let Abnormality::Contradiction(formula) = &abnormality {
-                    contradiction = Some(formula.clone());
+                if let Abnormality::Contradiction(_) = &abnormality {
+                    contradiction_found = true;
+                    // Add the contradiction abnormality to the conditions
                     conditions.insert(abnormality);
-                    conditions.extend(second_line.conditions.clone());
                 }
             }
         }
 
-        // If we found a contradiction, we can derive the conclusion
-        if contradiction.is_some() {
-            // Get the conclusion formula:
-            // 1. If there's a third line reference, use that formula as the conclusion
-            // 2. Or if there's a second line and it's not part of the contradiction, use that as the conclusion
-            // 3. Otherwise, we'll fail (no default hard-coded conclusion)
-
-            if from_lines.len() == 3 {
-                // Case 1: Third line specified as conclusion
-                let conclusion_line = proof.get_line(from_lines[2])?;
-                return Some((conclusion_line.formula.clone(), conditions));
-            } else if from_lines.len() == 2 && contradiction.is_none() {
-                // Case 2: Second line specified as conclusion (first line is the contradiction)
-                let conclusion_line = proof.get_line(from_lines[1])?;
-                return Some((conclusion_line.formula.clone(), conditions));
+        // If a contradiction was found, we can derive the conclusion
+        if contradiction_found {
+            // Get the conclusion formula from the appropriate line
+            let conclusion_line_idx = if from_lines.len() == 3 {
+                // If 3 lines are provided, the third is the conclusion
+                from_lines[2]
             } else {
-                // No conclusion specified - this is an invalid application of the rule
-                return None;
-            }
+                // Otherwise, assume the second line is the conclusion
+                from_lines[1]
+            };
+
+            let conclusion_line = proof.get_line(conclusion_line_idx)?;
+            return Some((conclusion_line.formula.clone(), conditions));
         }
 
         None
