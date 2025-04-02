@@ -51,7 +51,6 @@ pub trait LogicRule {
 ///    }
 /// }
 /// ```
-
 /// Represents the type of a rule in adaptive logic
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum RuleType {

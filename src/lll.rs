@@ -230,7 +230,7 @@ impl LowerLimitLogic {
                 if **neg_formula == **consequent {
                     let mut conditions = line1.conditions.clone();
                     conditions.extend(line2.conditions.clone());
-                    return Some((Formula::neg((**antecedent).clone()), conditions));
+                    return Some((Formula::negate((**antecedent).clone()), conditions));
                 }
             }
         }
@@ -241,7 +241,7 @@ impl LowerLimitLogic {
                 if **neg_formula == **consequent {
                     let mut conditions = line1.conditions.clone();
                     conditions.extend(line2.conditions.clone());
-                    return Some((Formula::neg((**antecedent).clone()), conditions));
+                    return Some((Formula::negate((**antecedent).clone()), conditions));
                 }
             }
         }
@@ -259,7 +259,7 @@ impl LowerLimitLogic {
                     // This could be a disjunctive syllogism violation in disguise:
                     // A → B is equivalent to ¬A ∨ B, and we're deriving B from ¬A
                     let abnormality = Abnormality::disj_syll_violation(
-                        Formula::neg((**antecedent).clone()),
+                        Formula::negate((**antecedent).clone()),
                         (**consequent).clone(),
                     );
                     conditions.insert(abnormality);
@@ -278,7 +278,7 @@ impl LowerLimitLogic {
 
                     // Add an abnormality condition
                     let abnormality = Abnormality::disj_syll_violation(
-                        Formula::neg((**antecedent).clone()),
+                        Formula::negate((**antecedent).clone()),
                         (**consequent).clone(),
                     );
                     conditions.insert(abnormality);
@@ -305,8 +305,8 @@ impl LowerLimitLogic {
         // Check if formula is an implication
         if let Formula::Impl(antecedent, consequent) = &line.formula {
             // Create the contrapositive: ¬Q → ¬P
-            let neg_consequent = Formula::neg((**consequent).clone());
-            let neg_antecedent = Formula::neg((**antecedent).clone());
+            let neg_consequent = Formula::negate((**consequent).clone());
+            let neg_antecedent = Formula::negate((**antecedent).clone());
             let contrapositive = Formula::impl_(neg_consequent, neg_antecedent);
 
             // Propagate conditions
@@ -327,7 +327,7 @@ impl LowerLimitLogic {
                         let conditions = line9.conditions.clone();
                         let p = Formula::var("P");
                         let r = Formula::var("R");
-                        let neg_neg_p = Formula::neg(Formula::neg(p));
+                        let neg_neg_p = Formula::negate(Formula::negate(p));
 
                         return Some((Formula::impl_(neg_neg_p, r), conditions));
                     }
@@ -352,10 +352,10 @@ impl LowerLimitLogic {
         // Handle both standard case (P ⊢ ¬¬P) and when the input is already negated (¬P ⊢ ¬¬P)
         let result = if let Formula::Neg(inner) = &line.formula {
             // For negated formula ¬P, create ¬¬P
-            Formula::neg(Formula::neg((**inner).clone()))
+            Formula::negate(Formula::negate((**inner).clone()))
         } else {
             // Regular double negation: P ⊢ ¬¬P
-            Formula::neg(Formula::neg(line.formula.clone()))
+            Formula::negate(Formula::negate(line.formula.clone()))
         };
 
         // Propagate conditions

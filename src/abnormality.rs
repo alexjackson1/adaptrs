@@ -30,11 +30,11 @@ impl Abnormality {
         match self {
             Abnormality::DisjunctiveSyllogismViolation(a, b) => {
                 let disj = Formula::disj(a.clone(), b.clone());
-                let neg_a = Formula::neg(a.clone());
-                let neg_b = Formula::neg(b.clone());
+                let neg_a = Formula::negate(a.clone());
+                let neg_b = Formula::negate(b.clone());
                 Formula::conj(disj, Formula::conj(neg_a, neg_b))
             }
-            Abnormality::Contradiction(a) => Formula::conj(a.clone(), Formula::neg(a.clone())),
+            Abnormality::Contradiction(a) => Formula::conj(a.clone(), Formula::negate(a.clone())),
         }
     }
 
@@ -104,9 +104,9 @@ impl Abnormality {
     }
 
     /// Check if one formula is the negation of another
-    fn is_negation_of(possible_neg: &Formula, formula: &Box<Formula>) -> bool {
+    fn is_negation_of(possible_neg: &Formula, formula: &Formula) -> bool {
         if let Formula::Neg(inner) = possible_neg {
-            return **inner == **formula;
+            return **inner == *formula;
         }
         false
     }
@@ -303,7 +303,7 @@ impl Abnormality {
                             } else if Self::is_negation_of(second, b_box)
                                 && Self::is_negation_of(third, a_box)
                             {
-                                // Directly compare Formula objects instead of string representations
+                                // Check if a_name and b_name match a_box and b_box
                                 if Formula::var(a_name) == **a_box
                                     && Formula::var(b_name) == **b_box
                                 {
@@ -327,8 +327,8 @@ impl Abnormality {
     /// Construct a disjunctive syllogism violation formula
     fn construct_ds_violation(a: &Formula, b: &Formula) -> Formula {
         let disj = Formula::disj(a.clone(), b.clone());
-        let neg_a = Formula::neg(a.clone());
-        let neg_b = Formula::neg(b.clone());
+        let neg_a = Formula::negate(a.clone());
+        let neg_b = Formula::negate(b.clone());
         Formula::conj(disj, Formula::conj(neg_a, neg_b))
     }
 
@@ -453,7 +453,7 @@ mod tests {
         // Test contradiction
         let contradiction = Abnormality::contradiction(p.clone());
         let formula = contradiction.to_formula();
-        let expected = Formula::conj(p.clone(), Formula::neg(p.clone()));
+        let expected = Formula::conj(p.clone(), Formula::negate(p.clone()));
         assert_eq!(formula, expected);
 
         // Test disjunctive syllogism violation
@@ -462,7 +462,7 @@ mod tests {
 
         let expected = Formula::conj(
             Formula::disj(p.clone(), q.clone()),
-            Formula::conj(Formula::neg(p.clone()), Formula::neg(q.clone())),
+            Formula::conj(Formula::negate(p.clone()), Formula::negate(q.clone())),
         );
         assert_eq!(formula, expected);
     }
@@ -470,7 +470,7 @@ mod tests {
     #[test]
     fn test_detect_contradiction() {
         let p = Formula::var("P");
-        let not_p = Formula::neg(p.clone());
+        let not_p = Formula::negate(p.clone());
 
         // Direct contradiction
         let contradiction = Formula::conj(p.clone(), not_p.clone());
@@ -487,7 +487,7 @@ mod tests {
         // Not a contradiction - check if not_p and not_q are detected as a contradiction
         // This should NOT be a contradiction because they're different variables
         let q = Formula::var("Q");
-        let not_q = Formula::neg(q.clone());
+        let not_q = Formula::negate(q.clone());
         let not_contradiction = Formula::conj(not_p.clone(), not_q.clone());
 
         // This formula is not a contradiction - it's just a conjunction of two negations
@@ -503,8 +503,8 @@ mod tests {
         let p = Formula::var("P");
         let q = Formula::var("Q");
         let p_or_q = Formula::disj(p.clone(), q.clone());
-        let not_p = Formula::neg(p.clone());
-        let not_q = Formula::neg(q.clone());
+        let not_p = Formula::negate(p.clone());
+        let not_q = Formula::negate(q.clone());
 
         // Direct DS violation: (P ∨ Q) ∧ ¬P ∧ ¬Q
         let ds_violation =
@@ -530,7 +530,7 @@ mod tests {
     #[test]
     fn test_check_contradiction() {
         let p = Formula::var("P");
-        let not_p = Formula::neg(p.clone());
+        let not_p = Formula::negate(p.clone());
 
         // Should detect contradiction
         let result = Abnormality::check_contradiction(&p, &not_p);
@@ -553,8 +553,8 @@ mod tests {
         let p = Formula::var("P");
         let q = Formula::var("Q");
         let p_or_q = Formula::disj(p.clone(), q.clone());
-        let not_p = Formula::neg(p.clone());
-        let not_q = Formula::neg(q.clone());
+        let not_p = Formula::negate(p.clone());
+        let not_q = Formula::negate(q.clone());
 
         // Formulas that should form a DS violation
         let formulas = vec![p_or_q.clone(), not_p.clone(), not_q.clone()];
@@ -580,7 +580,7 @@ mod tests {
         // Create individual abnormalities to test
 
         // Create a contradiction R ∧ ¬R
-        let r_and_not_r = Formula::conj(r.clone(), Formula::neg(r.clone()));
+        let r_and_not_r = Formula::conj(r.clone(), Formula::negate(r.clone()));
 
         // Test detecting the contradiction
         let abnormalities1 = Abnormality::detect_abnormalities(&r_and_not_r);
@@ -590,8 +590,8 @@ mod tests {
 
         // Create a DS violation (P ∨ Q) ∧ ¬P ∧ ¬Q
         let p_or_q = Formula::disj(p.clone(), q.clone());
-        let not_p = Formula::neg(p.clone());
-        let not_q = Formula::neg(q.clone());
+        let not_p = Formula::negate(p.clone());
+        let not_q = Formula::negate(q.clone());
         let ds_violation =
             Formula::conj(p_or_q.clone(), Formula::conj(not_p.clone(), not_q.clone()));
 
@@ -619,7 +619,7 @@ mod tests {
         assert!(var_map.contains_key("P"));
 
         // Test negation conversion
-        let not_p = Formula::neg(p.clone());
+        let not_p = Formula::negate(p.clone());
         let not_p_lit = Abnormality::to_cnf(&not_p, &mut var_map, &mut cnf);
         assert_eq!(not_p_lit, !p_lit);
 
@@ -656,7 +656,7 @@ mod tests {
         assert!(Abnormality::are_logically_equivalent(&p, &p));
 
         // Test equivalence with double negation: P ≡ ¬¬P
-        let not_not_p = Formula::neg(Formula::neg(p.clone()));
+        let not_not_p = Formula::negate(Formula::negate(p.clone()));
         assert!(Abnormality::are_logically_equivalent(&p, &not_not_p));
 
         // The remaining tests depend on our SAT solver implementation details
@@ -664,8 +664,10 @@ mod tests {
         // formulas to CNF. Let's focus on the most important equivalences.
 
         // Test basic equivalences like identity laws
-        let p_and_true =
-            Formula::conj(p.clone(), Formula::disj(p.clone(), Formula::neg(p.clone())));
+        let p_and_true = Formula::conj(
+            p.clone(),
+            Formula::disj(p.clone(), Formula::negate(p.clone())),
+        );
         assert!(Abnormality::are_logically_equivalent(&p, &p_and_true));
 
         // Test for non-equivalence - these formulas are definitely not equivalent
@@ -685,8 +687,8 @@ mod tests {
 
         // Create a standard DS violation
         let p_or_q = Formula::disj(p.clone(), q.clone());
-        let not_p = Formula::neg(p.clone());
-        let not_q = Formula::neg(q.clone());
+        let not_p = Formula::negate(p.clone());
+        let not_q = Formula::negate(q.clone());
         let ds_violation =
             Formula::conj(p_or_q.clone(), Formula::conj(not_p.clone(), not_q.clone()));
 
@@ -709,7 +711,7 @@ mod tests {
         // Test non-DS violation
         // P ∨ Q ∧ ¬P without the ¬Q is not a DS violation
         let p_or_q = Formula::disj(p.clone(), q.clone());
-        let not_p = Formula::neg(p.clone());
+        let not_p = Formula::negate(p.clone());
         let non_ds = Formula::conj(p_or_q.clone(), not_p.clone()); // Missing ¬Q
 
         // The formula (P ∨ Q) ∧ ¬P should not be detected as a DS violation

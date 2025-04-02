@@ -176,7 +176,7 @@ mod tests {
         let p = Formula::var("P");
         let q = Formula::var("Q");
         let p_or_q = Formula::disj(p.clone(), q.clone());
-        let not_p = Formula::neg(p.clone());
+        let not_p = Formula::negate(p.clone());
 
         let line1 = proof.add_premise(p_or_q.clone());
         let line2 = proof.add_premise(not_p.clone());

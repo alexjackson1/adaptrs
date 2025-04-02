@@ -327,15 +327,15 @@ fn collect_derived_abnormalities(proof: &Proof) -> HashSet<Abnormality> {
             // the abnormality is derivable
             match condition {
                 Abnormality::Contradiction(formula) => {
-                    let negation = Formula::neg(formula.clone());
+                    let negation = Formula::negate(formula.clone());
                     if all_formulas.contains(formula) || all_formulas.contains(&negation) {
                         result.insert(condition.clone());
                     }
                 }
                 Abnormality::DisjunctiveSyllogismViolation(a, b) => {
                     let disj = Formula::disj(a.clone(), b.clone());
-                    let neg_a = Formula::neg(a.clone());
-                    let neg_b = Formula::neg(b.clone());
+                    let neg_a = Formula::negate(a.clone());
+                    let neg_b = Formula::negate(b.clone());
 
                     // If we have A ∨ B, ¬A, and ¬B in the proof, the DS violation is derivable
                     if all_formulas.contains(&disj)
@@ -374,7 +374,7 @@ mod tests {
 
         let p = Formula::var("P");
         let q = Formula::var("Q");
-        let not_p = Formula::neg(p.clone());
+        let not_p = Formula::negate(p.clone());
 
         // Add a contradiction
         let p_and_not_p = Formula::conj(p.clone(), not_p.clone());
@@ -398,8 +398,8 @@ mod tests {
         let p = Formula::var("P");
         let q = Formula::var("Q");
         let p_or_q = Formula::disj(p.clone(), q.clone());
-        let not_p = Formula::neg(p.clone());
-        let not_q = Formula::neg(q.clone());
+        let not_p = Formula::negate(p.clone());
+        let not_q = Formula::negate(q.clone());
 
         // Add formulas that together form a DS violation
         proof.add_premise(p_or_q.clone());
@@ -421,7 +421,7 @@ mod tests {
         let p = Formula::var("P");
         let q = Formula::var("Q");
         let p_or_q = Formula::disj(p.clone(), q.clone());
-        let not_p = Formula::neg(p.clone());
+        let not_p = Formula::negate(p.clone());
 
         // Create a proof with DS
         // 1. P ∨ Q                  PREM
@@ -453,7 +453,7 @@ mod tests {
         assert!(proof.derived_abnormalities.is_empty());
 
         // Now add ¬Q to prove the DS violation
-        let not_q = Formula::neg(q.clone());
+        let not_q = Formula::negate(q.clone());
         proof.add_premise(not_q.clone());
 
         // Apply marking again
@@ -478,12 +478,12 @@ mod tests {
 
         // Create a proof with multiple abnormalities
         proof.add_premise(p.clone());
-        proof.add_premise(Formula::neg(p.clone())); // Contradiction
+        proof.add_premise(Formula::negate(p.clone())); // Contradiction
 
         // Create a DS violation
         proof.add_premise(Formula::disj(q.clone(), r.clone()));
-        proof.add_premise(Formula::neg(q.clone()));
-        proof.add_premise(Formula::neg(r.clone()));
+        proof.add_premise(Formula::negate(q.clone()));
+        proof.add_premise(Formula::negate(r.clone()));
 
         let abnormalities = collect_derived_abnormalities(&proof);
 
@@ -568,8 +568,8 @@ mod tests {
         let p = Formula::var("P");
         let q = Formula::var("Q");
         let p_or_q = Formula::disj(p.clone(), q.clone());
-        let not_p = Formula::neg(p.clone());
-        let not_q = Formula::neg(q.clone());
+        let not_p = Formula::negate(p.clone());
+        let not_q = Formula::negate(q.clone());
 
         // Similar to marked_proof.txt
         // 1. P ∨ Q          PREM

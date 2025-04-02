@@ -24,7 +24,7 @@ impl Formula {
     }
 
     /// Creates a new negation formula
-    pub fn neg(formula: Formula) -> Self {
+    pub fn negate(formula: Formula) -> Self {
         Formula::Neg(Box::new(formula))
     }
 
@@ -117,7 +117,7 @@ mod tests {
     fn test_formula_creation() {
         let p = Formula::var("P");
         let q = Formula::var("Q");
-        let not_p = Formula::neg(p.clone());
+        let not_p = Formula::negate(p.clone());
         let p_and_q = Formula::conj(p.clone(), q.clone());
 
         // Check creation of basic operators
@@ -162,11 +162,11 @@ mod tests {
     fn test_formula_display() {
         let p = Formula::var("P");
         let q = Formula::var("Q");
-        let not_p = Formula::neg(p.clone());
+        let not_p = Formula::negate(p.clone());
         let p_and_q = Formula::conj(p.clone(), q.clone());
         let complex = Formula::impl_(
             Formula::disj(p.clone(), q.clone()),
-            Formula::neg(p_and_q.clone()),
+            Formula::negate(p_and_q.clone()),
         );
 
         assert_eq!(p.to_string(), "P");

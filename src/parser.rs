@@ -99,7 +99,7 @@ fn parse_negation(input: &str) -> IRes<&str, Formula> {
                 alt((tag("¬"), tag("~"), tag("!"))),
                 preceded(space0, parse_atom),
             ),
-            Formula::neg,
+            Formula::negate,
         ),
     )(input)
 }
@@ -638,7 +638,7 @@ fn parse_proof_line_internal(
     let rest = rest.trim();
     let conditions = if rest.starts_with('{') {
         // Try to parse conditions with the helper
-        parse_abnormality_condition(rest).unwrap_or_else(HashSet::new)
+        parse_abnormality_condition(rest).unwrap_or_default()
     } else {
         HashSet::new()
     };
@@ -751,11 +751,11 @@ mod tests {
         assert_eq!(parse_formula_str("P").unwrap(), Formula::var("P"));
         assert_eq!(
             parse_formula_str("¬P").unwrap(),
-            Formula::neg(Formula::var("P"))
+            Formula::negate(Formula::var("P"))
         );
         assert_eq!(
             parse_formula_str("~P").unwrap(),
-            Formula::neg(Formula::var("P"))
+            Formula::negate(Formula::var("P"))
         );
 
         // Test binary operations
@@ -922,7 +922,7 @@ mod tests {
         let line = parse_proof_line(input, None).unwrap();
 
         assert_eq!(line.line_number, 2);
-        assert_eq!(line.formula, Formula::neg(Formula::var("P")));
+        assert_eq!(line.formula, Formula::negate(Formula::var("P")));
         assert_eq!(line.justification, Justification::Premise);
         assert!(line.conditions.is_empty());
 
@@ -1038,13 +1038,13 @@ mod tests {
         // Test negation has highest precedence
         assert_eq!(
             parse_formula_str("¬P ∧ Q").unwrap(),
-            Formula::conj(Formula::neg(Formula::var("P")), Formula::var("Q"))
+            Formula::conj(Formula::negate(Formula::var("P")), Formula::var("Q"))
         );
 
         // Test multiple negations
         assert_eq!(
             parse_formula_str("¬¬P").unwrap(),
-            Formula::neg(Formula::neg(Formula::var("P")))
+            Formula::negate(Formula::negate(Formula::var("P")))
         );
 
         // Test parentheses override precedence
@@ -1065,7 +1065,7 @@ mod tests {
             Formula::bicon(
                 Formula::conj(
                     Formula::impl_(Formula::var("P"), Formula::var("Q")),
-                    Formula::disj(Formula::var("R"), Formula::neg(Formula::var("S")))
+                    Formula::disj(Formula::var("R"), Formula::negate(Formula::var("S")))
                 ),
                 Formula::var("T")
             )
@@ -1133,7 +1133,7 @@ mod tests {
         // Test different notations for negation
         assert_eq!(
             parse_formula_str("!P").unwrap(),
-            Formula::neg(Formula::var("P"))
+            Formula::negate(Formula::var("P"))
         );
     }
 
@@ -1157,7 +1157,7 @@ mod tests {
             Formula::impl_(
                 Formula::conj(
                     Formula::disj(Formula::var("P"), Formula::var("Q")),
-                    Formula::neg(Formula::var("P"))
+                    Formula::negate(Formula::var("P"))
                 ),
                 Formula::var("Q")
             )
@@ -1167,10 +1167,10 @@ mod tests {
         assert_eq!(
             parse_formula_str("¬(P ∧ Q) ↔ (¬P ∨ ¬Q)").unwrap(),
             Formula::bicon(
-                Formula::neg(Formula::conj(Formula::var("P"), Formula::var("Q"))),
+                Formula::negate(Formula::conj(Formula::var("P"), Formula::var("Q"))),
                 Formula::disj(
-                    Formula::neg(Formula::var("P")),
-                    Formula::neg(Formula::var("Q"))
+                    Formula::negate(Formula::var("P")),
+                    Formula::negate(Formula::var("Q"))
                 )
             )
         );
@@ -1196,7 +1196,7 @@ mod tests {
             Formula::impl_(
                 Formula::conj(
                     Formula::disj(Formula::var("Assert1"), Formula::var("Assert2")),
-                    Formula::neg(Formula::var("Assert1"))
+                    Formula::negate(Formula::var("Assert1"))
                 ),
                 Formula::var("Assert2")
             )
