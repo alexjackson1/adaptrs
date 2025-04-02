@@ -27,7 +27,7 @@ Adaptive logics provide a formal framework for nonmonotonic reasoning, where con
 Clone the repository and build using Cargo:
 
 ```bash
-git clone https://github.com/yourusername/adaptrs.git
+git clone https://github.com/alexjackson1/adaptrs.git
 cd adaptrs
 cargo build --release
 ```
