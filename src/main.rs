@@ -5,78 +5,65 @@ use std::process;
 use adaptrs::parse_proof;
 use adaptrs::verify_proof;
 use adaptrs::AdaptiveStrategy;
+use clap::{Parser, Subcommand, ValueEnum};
+
+#[derive(Parser)]
+#[command(
+    name = "adaptrs",
+    about = "An adaptive logic proof verifier",
+    version,
+    author
+)]
+struct Cli {
+    #[command(subcommand)]
+    command: Commands,
+}
+
+#[derive(Subcommand)]
+enum Commands {
+    /// Verify an adaptive logic proof
+    Verify(VerifyArgs),
+}
+
+#[derive(Parser)]
+struct VerifyArgs {
+    /// Path to the proof file
+    #[arg(short, long, value_name = "FILE")]
+    file: PathBuf,
+
+    /// Strategy for handling abnormalities
+    #[arg(short, long, value_enum, default_value_t = Strategy::Reliability)]
+    strategy: Strategy,
+
+    /// Enable verbose output
+    #[arg(short, long)]
+    verbose: bool,
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, ValueEnum)]
+enum Strategy {
+    /// Reliability strategy
+    Reliability,
+    /// Minimal abnormality strategy
+    Minimal,
+}
+
+impl From<Strategy> for AdaptiveStrategy {
+    fn from(strategy: Strategy) -> Self {
+        match strategy {
+            Strategy::Reliability => AdaptiveStrategy::Reliability,
+            Strategy::Minimal => AdaptiveStrategy::MinimalAbnormality,
+        }
+    }
+}
 
 fn main() {
-    // A simple CLI implementation
-    // In a real application, this would use a proper CLI framework like clap
+    let cli = Cli::parse();
 
-    let args: Vec<String> = std::env::args().collect();
-
-    if args.len() < 2 {
-        eprintln!(
-            "Usage: {} verify --file <proof_file> --strategy <reliability|minimal> [--verbose]",
-            args[0]
-        );
-        process::exit(1);
-    }
-
-    match args[1].as_str() {
-        "verify" => {
-            // Parse command line arguments
-            let mut file_path = None;
-            let mut strategy = AdaptiveStrategy::Reliability;
-            let mut verbose = false;
-
-            let mut i = 2;
-            while i < args.len() {
-                match args[i].as_str() {
-                    "--file" => {
-                        if i + 1 < args.len() {
-                            file_path = Some(PathBuf::from(&args[i + 1]));
-                            i += 2;
-                        } else {
-                            eprintln!("Missing argument for --file");
-                            process::exit(1);
-                        }
-                    }
-                    "--strategy" => {
-                        if i + 1 < args.len() {
-                            match args[i + 1].as_str() {
-                                "reliability" => strategy = AdaptiveStrategy::Reliability,
-                                "minimal" => strategy = AdaptiveStrategy::MinimalAbnormality,
-                                _ => {
-                                    eprintln!("Invalid strategy: {}", args[i + 1]);
-                                    process::exit(1);
-                                }
-                            }
-                            i += 2;
-                        } else {
-                            eprintln!("Missing argument for --strategy");
-                            process::exit(1);
-                        }
-                    }
-                    "--verbose" => {
-                        verbose = true;
-                        i += 1;
-                    }
-                    _ => {
-                        eprintln!("Unknown argument: {}", args[i]);
-                        process::exit(1);
-                    }
-                }
-            }
-
-            // Check if file path is provided
-            let file_path = match file_path {
-                Some(path) => path,
-                None => {
-                    eprintln!("Missing required argument: --file");
-                    process::exit(1);
-                }
-            };
-
+    match cli.command {
+        Commands::Verify(args) => {
             // Read proof file
-            let proof_content = match fs::read_to_string(&file_path) {
+            let proof_content = match fs::read_to_string(&args.file) {
                 Ok(content) => content,
                 Err(err) => {
                     eprintln!("Error reading file: {}", err);
@@ -85,6 +72,7 @@ fn main() {
             };
 
             // Parse proof
+            let strategy: AdaptiveStrategy = args.strategy.into();
             let mut proof = match parse_proof(&proof_content, strategy) {
                 Ok(proof) => proof,
                 Err(err) => {
@@ -103,7 +91,7 @@ fn main() {
                 println!("Proof is invalid.");
             }
 
-            if verbose {
+            if args.verbose {
                 println!("\nDetails:");
                 for detail in &result.details {
                     println!("  {}", detail);
@@ -117,14 +105,6 @@ fn main() {
             if !result.valid {
                 process::exit(1);
             }
-        }
-        _ => {
-            eprintln!("Unknown command: {}", args[1]);
-            eprintln!(
-                "Usage: {} verify --file <proof_file> --strategy <reliability|minimal> [--verbose]",
-                args[0]
-            );
-            process::exit(1);
         }
     }
 }
