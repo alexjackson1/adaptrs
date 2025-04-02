@@ -1,5 +1,8 @@
 # Adaptive Logic Proof Verifier
 
+> [!IMPORTANT]
+> This repository was created while "vibe coding" with Claude Code. It may contain unexpected issues, odd bugs, or non-idiomatic code patterns. Use at your own risk!
+
 A Rust implementation of a proof verifier for adaptive logics, a formal framework for nonmonotonic reasoning where conclusions can be withdrawn when new information is added.
 
 ## Overview
@@ -37,13 +40,31 @@ cargo build --release
 Verify a proof file using the reliability strategy:
 
 ```bash
-adaptrs verify --file examples/simple_proof.txt --strategy reliability
+adaptrs verify --file examples/simple_proof.txt
+```
+
+You can specify the adaptive strategy:
+
+```bash
+adaptrs verify --file examples/simple_proof.txt --strategy minimal
 ```
 
 For detailed verification information:
 
 ```bash
-adaptrs verify --file examples/simple_proof.txt --strategy reliability --verbose
+adaptrs verify --file examples/simple_proof.txt --verbose
+```
+
+Get help with available commands:
+
+```bash
+adaptrs --help
+```
+
+Get help with the verify command:
+
+```bash
+adaptrs verify --help
 ```
 
 ## Proof File Format
