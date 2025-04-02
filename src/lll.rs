@@ -446,11 +446,14 @@ impl LowerLimitLogic {
     /// Apply ex falso quodlibet: A ∧ ¬A ⊢ B
     /// In this rule, we can derive any formula from a contradiction
     fn apply_ex_falso(proof: &Proof, from_lines: &[usize]) -> Option<(Formula, AbnormalitySet)> {
-        if from_lines.len() < 1 || from_lines.len() > 2 {
+        // We expect 2-3 lines:
+        // - 1-2 lines for establishing the contradiction (either a single contradiction formula or two contradictory formulas)
+        // - 1 optional line for specifying the conclusion to derive
+        if from_lines.len() < 1 || from_lines.len() > 3 {
             return None;
         }
 
-        // We need 1-2 premises: either a contradiction or two complementary formulas
+        // We need at least 1 premise: either a contradiction or two complementary formulas
         let premise_line = proof.get_line(from_lines[0])?;
         let mut contradiction = None;
         let mut conditions = premise_line.conditions.clone();
@@ -464,7 +467,7 @@ impl LowerLimitLogic {
         }
 
         // Check for contradicting formulas in two premises
-        if contradiction.is_none() && from_lines.len() == 2 {
+        if contradiction.is_none() && from_lines.len() >= 2 {
             let second_line = proof.get_line(from_lines[1])?;
             if let Some(abnormality) =
                 Abnormality::check_contradiction(&premise_line.formula, &second_line.formula)
@@ -479,19 +482,23 @@ impl LowerLimitLogic {
 
         // If we found a contradiction, we can derive the conclusion
         if contradiction.is_some() {
-            // The conclusion should be provided as a separate argument
-            // but for backward compatibility, we'll check if there's a third argument
-            // otherwise default to a variable from the complex_proof.txt example
-            if from_lines.len() > 2 {
-                if let Some(conclusion_line) = proof.get_line(from_lines[2]) {
-                    return Some((conclusion_line.formula.clone(), conditions));
-                }
-            }
+            // Get the conclusion formula:
+            // 1. If there's a third line reference, use that formula as the conclusion
+            // 2. Or if there's a second line and it's not part of the contradiction, use that as the conclusion
+            // 3. Otherwise, we'll fail (no default hard-coded conclusion)
 
-            // For backward compatibility with our examples, default to 'S'
-            // In a real implementation, this would be passed in or parsed from the proof
-            let conclusion = Formula::var("S");
-            return Some((conclusion, conditions));
+            if from_lines.len() == 3 {
+                // Case 1: Third line specified as conclusion
+                let conclusion_line = proof.get_line(from_lines[2])?;
+                return Some((conclusion_line.formula.clone(), conditions));
+            } else if from_lines.len() == 2 && contradiction.is_none() {
+                // Case 2: Second line specified as conclusion (first line is the contradiction)
+                let conclusion_line = proof.get_line(from_lines[1])?;
+                return Some((conclusion_line.formula.clone(), conditions));
+            } else {
+                // No conclusion specified - this is an invalid application of the rule
+                return None;
+            }
         }
 
         None
