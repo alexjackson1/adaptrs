@@ -13,6 +13,14 @@ authors = ["Claude"]
 # - log for logging
 # - etc.
 
+[lib]
+name = "adaptrs"
+path = "src/lib.rs"
+
+[[bin]]
+name = "adaptrs"
+path = "src/main.rs"
+
 [profile.release]
 opt-level = 3
 lto = true
