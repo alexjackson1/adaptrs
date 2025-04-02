@@ -8,6 +8,8 @@ authors = ["Alex Jackson <mail@alexjackson.uk>"]
 [dependencies]
 nom = "7.1.3"
 thiserror = "1.0.56"
+varisat = "0.2.2"   # SAT solver for detecting abnormalities
+itertools = "0.11.0" # For efficient combinations and permutations
 
 [lib]
 name = "adaptrs"

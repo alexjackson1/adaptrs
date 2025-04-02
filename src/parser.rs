@@ -259,7 +259,13 @@ fn parse_rule_internal(input: &str) -> IRes<&str, Rule> {
             value(Rule::Prem, tag("PREM")),
             value(
                 Rule::AndIntro,
-                alt((tag("AND-I"), tag("∧I"), tag("ANDINTRO"), tag("AND-INTRO"))),
+                alt((
+                    tag("AND-I"),
+                    tag("∧I"),
+                    tag("ANDINTRO"),
+                    tag("AND-INTRO"),
+                    tag_no_case("AndIntro"),
+                )),
             ),
             value(
                 Rule::AndElim1,
@@ -275,15 +281,61 @@ fn parse_rule_internal(input: &str) -> IRes<&str, Rule> {
             ),
             value(
                 Rule::OrIntro2,
-                alt((tag("OR-I2"), tag("∨I2"), tag("ORINTRO2"), tag("OR-INTRO2"))),
+                alt((
+                    tag("OR-I2"),
+                    tag("∨I2"),
+                    tag("ORINTRO2"),
+                    tag("OR-INTRO2"),
+                    tag_no_case("OrIntro2"),
+                )),
             ),
             value(
                 Rule::ModusPonens,
-                alt((tag("MP"), tag("MODUS PONENS"), tag("MODUS-PONENS"))),
+                alt((
+                    tag("MP"),
+                    tag("MODUS PONENS"),
+                    tag("MODUS-PONENS"),
+                    tag_no_case("ModusPonens"),
+                )),
             ),
             value(
                 Rule::ModusTollens,
-                alt((tag("MT"), tag("MODUS TOLLENS"), tag("MODUS-TOLLENS"))),
+                alt((
+                    tag("MT"),
+                    tag("MODUS TOLLENS"),
+                    tag("MODUS-TOLLENS"),
+                    tag_no_case("ModusTollens"),
+                )),
+            ),
+            value(
+                Rule::ContrapositiveEquiv,
+                alt((
+                    tag("CE"),
+                    tag("CONTRAPOSITIVE"),
+                    tag("CONTRAP"),
+                    tag("CONTRA EQUIV"),
+                    tag_no_case("ContrapositiveEquiv"),
+                )),
+            ),
+            value(
+                Rule::DoubleNegIntro,
+                alt((
+                    tag("DNI"),
+                    tag("DOUBLE NEG"),
+                    tag("DOUBLE NEGATION"),
+                    tag("DOUBLENEGINTRO"),
+                    tag_no_case("DoubleNegIntro"),
+                )),
+            ),
+            value(
+                Rule::DoubleNegElim,
+                alt((
+                    tag("DNE"),
+                    tag("DOUBLE NEG ELIM"),
+                    tag("DOUBLE NEGATION ELIM"),
+                    tag("DOUBLENEG"),
+                    tag_no_case("DoubleNegElim"),
+                )),
             ),
             value(
                 Rule::DisjSyll,
@@ -292,6 +344,8 @@ fn parse_rule_internal(input: &str) -> IRes<&str, Rule> {
                     tag("DISJ SYLL"),
                     tag("DISJSYLL"),
                     tag("DISJ-SYLL"),
+                    tag("DISJSYLL"),
+                    tag_no_case("DisjSyll"),
                 )),
             ),
             value(
@@ -597,27 +651,37 @@ fn tag_no_case<'a, E: ParseError<&'a str>>(
     t: &'a str,
 ) -> impl Fn(&'a str) -> IResult<&'a str, &'a str, E> + 'a {
     move |i: &str| {
-        let t_up = t.to_uppercase();
-        let t_len = t.len();
+        // Use chars iterators instead of indexing to avoid UTF-8 boundary issues
+        let mut i_chars = i.chars();
+        let mut t_chars = t.chars();
+        let mut matched = String::new();
 
-        let res = if i.len() >= t_len {
-            let i_up = i[..t_len].to_uppercase();
-            if i_up == t_up {
-                Ok((&i[t_len..], &i[..t_len]))
-            } else {
-                Err(nom::Err::Error(E::from_error_kind(
-                    i,
-                    nom::error::ErrorKind::Tag,
-                )))
+        loop {
+            match (t_chars.next(), i_chars.next()) {
+                (Some(tc), Some(ic)) => {
+                    // Case-insensitive comparison of characters
+                    if tc.to_uppercase().to_string() != ic.to_uppercase().to_string() {
+                        return Err(nom::Err::Error(E::from_error_kind(
+                            i,
+                            nom::error::ErrorKind::Tag,
+                        )));
+                    }
+                    matched.push(ic);
+                }
+                (None, _) => {
+                    // We matched the entire tag
+                    // Return the remaining input and the matched portion
+                    return Ok((&i[matched.len()..], &i[..matched.len()]));
+                }
+                (Some(_), None) => {
+                    // Input is too short
+                    return Err(nom::Err::Error(E::from_error_kind(
+                        i,
+                        nom::error::ErrorKind::Tag,
+                    )));
+                }
             }
-        } else {
-            Err(nom::Err::Error(E::from_error_kind(
-                i,
-                nom::error::ErrorKind::Tag,
-            )))
-        };
-
-        res
+        }
     }
 }
 
@@ -759,7 +823,7 @@ mod tests {
         assert_eq!(line.justification, Justification::Premise);
         assert!(line.conditions.is_empty());
 
-        let input = "3. Q 1,2 DS {(P ∨ Q) ∧ ¬P ∧ ¬Q}";
+        let input = "3. Q 1,2 DisjSyll {(P ∨ Q) ∧ ¬P ∧ ¬Q}";
         let line = parse_proof_line(input, Some(3)).unwrap();
 
         assert_eq!(line.line_number, 3);
@@ -791,7 +855,7 @@ mod tests {
             \n\
             1. P ∨ Q PREM\n\
             2. ¬P PREM\n\
-            3. Q 1,2 DS {(P ∨ Q) ∧ ¬P ∧ ¬Q}\
+            3. Q 1,2 DisjSyll {(P ∨ Q) ∧ ¬P ∧ ¬Q}\
         ";
 
         let proof = parse_proof(input, AdaptiveStrategy::Reliability).unwrap();

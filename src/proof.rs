@@ -25,6 +25,12 @@ pub enum Rule {
     ModusPonens,
     /// Modus tollens: A → B, ¬B ⊢ ¬A
     ModusTollens,
+    /// Contrapositive equivalence: P → Q ⊢ ¬Q → ¬P
+    ContrapositiveEquiv,
+    /// Double negation introduction: P ⊢ ¬¬P
+    DoubleNegIntro,
+    /// Double negation elimination: ¬¬P ⊢ P
+    DoubleNegElim,
 
     // Conditional Rules
     /// Disjunctive syllogism: A ∨ B, ¬A ⊢ B
@@ -44,6 +50,9 @@ impl fmt::Display for Rule {
             Rule::OrIntro2 => write!(f, "∨I2"),
             Rule::ModusPonens => write!(f, "MP"),
             Rule::ModusTollens => write!(f, "MT"),
+            Rule::ContrapositiveEquiv => write!(f, "CE"),
+            Rule::DoubleNegIntro => write!(f, "DNI"),
+            Rule::DoubleNegElim => write!(f, "DNE"),
             Rule::DisjSyll => write!(f, "DS"),
             Rule::ExFalso => write!(f, "EFQ"),
         }
